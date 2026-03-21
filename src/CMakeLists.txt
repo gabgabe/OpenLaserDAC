@@ -1,0 +1,22 @@
+idf_component_register(
+    SRCS 
+        "main.c"
+        "hal/dac80508.c"
+        "hal/dac_timer.c"
+        "hal/w5500_eth.c"
+        "core/frame_buffer.c"
+        "input/etherdream_server.c"
+        "web/http_server.c"
+        "web/ota_handler.c"
+    INCLUDE_DIRS 
+        "."
+    REQUIRES
+        driver
+        esp_wifi
+        esp_netif
+        esp_eth
+        esp_http_server
+        nvs_flash
+        json
+        app_update
+)
