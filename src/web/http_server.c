@@ -81,24 +81,13 @@ static esp_err_t index_handler(httpd_req_t* req) {
 // Android checks /generate_204 and expects HTTP 204.
 // iOS/macOS check /hotspot-detect.html and expect "Success".
 // Windows checks /connecttest.txt and /ncsi.txt.
-static esp_err_t captive_204_handler(httpd_req_t* req) {
-    // Android: expects HTTP 204 No Content
-    httpd_resp_set_status(req, "204 No Content");
+// We return "wrong" responses on purpose to trigger the captive-portal popup,
+// which forces the OS to open a browser window on our WiFi interface.
+
+static esp_err_t captive_redirect_handler(httpd_req_t* req) {
+    httpd_resp_set_status(req, "302 Found");
+    httpd_resp_set_hdr(req, "Location", "http://192.168.4.1/");
     httpd_resp_send(req, NULL, 0);
-    return ESP_OK;
-}
-
-static esp_err_t captive_success_handler(httpd_req_t* req) {
-    // iOS/macOS: expects body containing "Success"
-    httpd_resp_set_type(req, "text/html");
-    httpd_resp_sendstr(req, "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
-    return ESP_OK;
-}
-
-static esp_err_t captive_ncsi_handler(httpd_req_t* req) {
-    // Windows NCSI: expects 200 OK with text body
-    httpd_resp_set_type(req, "text/plain");
-    httpd_resp_sendstr(req, "Microsoft NCSI");
     return ESP_OK;
 }
 
@@ -151,18 +140,18 @@ esp_err_t http_server_start(void) {
     httpd_uri_t status_uri = { .uri = "/api/status", .method = HTTP_GET, .handler = status_handler };
     httpd_register_uri_handler(s_server, &status_uri);
     // Android
-    httpd_uri_t gen204_uri = { .uri = "/generate_204", .method = HTTP_GET, .handler = captive_204_handler };
+    httpd_uri_t gen204_uri = { .uri = "/generate_204", .method = HTTP_GET, .handler = captive_redirect_handler };
     httpd_register_uri_handler(s_server, &gen204_uri);
     // iOS / macOS
-    httpd_uri_t hotspot_uri = { .uri = "/hotspot-detect.html", .method = HTTP_GET, .handler = captive_success_handler };
+    httpd_uri_t hotspot_uri = { .uri = "/hotspot-detect.html", .method = HTTP_GET, .handler = captive_redirect_handler };
     httpd_register_uri_handler(s_server, &hotspot_uri);
     // Windows NCSI
-    httpd_uri_t ncsi_uri = { .uri = "/connecttest.txt", .method = HTTP_GET, .handler = captive_ncsi_handler };
+    httpd_uri_t ncsi_uri = { .uri = "/connecttest.txt", .method = HTTP_GET, .handler = captive_redirect_handler };
     httpd_register_uri_handler(s_server, &ncsi_uri);
-    httpd_uri_t ncsi2_uri = { .uri = "/ncsi.txt", .method = HTTP_GET, .handler = captive_ncsi_handler };
+    httpd_uri_t ncsi2_uri = { .uri = "/ncsi.txt", .method = HTTP_GET, .handler = captive_redirect_handler };
     httpd_register_uri_handler(s_server, &ncsi2_uri);
     // Additional Apple check
-    httpd_uri_t apple_uri = { .uri = "/library/test/success.html", .method = HTTP_GET, .handler = captive_success_handler };
+    httpd_uri_t apple_uri = { .uri = "/library/test/success.html", .method = HTTP_GET, .handler = captive_redirect_handler };
     httpd_register_uri_handler(s_server, &apple_uri);
     
     // Register OTA handlers

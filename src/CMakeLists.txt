@@ -4,10 +4,12 @@ idf_component_register(
         "hal/dac80508.c"
         "hal/dac_timer.c"
         "hal/w5500_eth.c"
+        "hal/status_led.c"
         "core/frame_buffer.c"
         "input/etherdream_server.c"
         "web/http_server.c"
         "web/ota_handler.c"
+        "web/dns_server.c"
     INCLUDE_DIRS 
         "."
     REQUIRES
@@ -19,4 +21,5 @@ idf_component_register(
         nvs_flash
         json
         app_update
+        led_strip
 )

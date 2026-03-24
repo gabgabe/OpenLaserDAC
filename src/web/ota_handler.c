@@ -23,6 +23,13 @@
 #include "esp_system.h"
 #include <string.h>
 
+#include "hal/dac_timer.h"
+#include "hal/status_led.h"
+#include "core/frame_buffer.h"
+#include "input/etherdream_server.h"
+#include "web/http_server.h"
+#include "web/dns_server.h"
+
 static const char* TAG = "OTA";
 
 #define OTA_BUF_SIZE 4096
@@ -37,6 +44,16 @@ static esp_err_t ota_upload_handler(httpd_req_t* req) {
     int received = 0;
 
     ESP_LOGI(TAG, "Starting OTA update, size: %d bytes", remaining);
+
+    // Graceful shutdown: stop laser output and disconnect protocols
+    ESP_LOGI(TAG, "Shutting down subsystems for safe OTA...");
+    dac_timer_set_playback_active(false);
+    dac_timer_stop();
+    frame_buffer_clear();
+    etherdream_server_stop();
+    dns_server_stop();
+    status_led_set(40, 20, 0);  // Orange = OTA in progress
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     // Get update partition
     update_partition = esp_ota_get_next_update_partition(NULL);
@@ -108,6 +125,9 @@ static esp_err_t ota_upload_handler(httpd_req_t* req) {
     const char* resp = "{\"status\":\"success\",\"message\":\"OTA update complete, rebooting...\"}";
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, resp, strlen(resp));
+
+    // Clean stop HTTP server before reboot
+    http_server_stop();
 
     // Reboot after 2 seconds
     vTaskDelay(pdMS_TO_TICKS(2000));

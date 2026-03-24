@@ -170,6 +170,9 @@ esp_err_t w5500_eth_init(void)
             if (ver_rx[3] == 0x00 && phy_rx[3] == 0x00) {
                 ESP_LOGE(TAG, "W5500 not responding! Check: VCC(3.3V), GND, MISO(GPIO%d), MOSI(GPIO%d), CLK(GPIO%d), CS(GPIO%d)",
                          PIN_ETH_MISO, PIN_ETH_MOSI, PIN_ETH_SCK, PIN_ETH_CS);
+                spi_bus_remove_device(test_spi);
+                spi_bus_free(ETH_SPI_HOST);
+                return ESP_ERR_NOT_FOUND;
             }
             
             spi_bus_remove_device(test_spi);

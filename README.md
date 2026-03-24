@@ -16,7 +16,6 @@ Turn your ESP32-S3 into a full-featured laser controller — plug in an Ethernet
 
 ### ☕ Support the project
 
-If OpenLaserDAC saved you some time, some money, or at least a little debugging pain, you can fuel future features here:
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=000000)](https://buymeacoffee.com/gabgabe)
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/J3J31WDWSV)

@@ -87,6 +87,12 @@ static const laser_point_t REST_POINT = {
     .user1 = 0, .user2 = 0, .flags = POINT_FLAG_BLANK
 };
 
+// Last output point - used to hold galvo position on underrun
+static laser_point_t s_last_point = {
+    .x = 0, .y = 0, .r = 0, .g = 0, .b = 0,
+    .user1 = 0, .user2 = 0, .flags = POINT_FLAG_BLANK
+};
+
 // ISR buffer helpers (lock-free single producer/consumer)
 static inline size_t IRAM_ATTR isr_buffer_count(void) {
     size_t h = s_isr_head;
@@ -114,8 +120,13 @@ static bool IRAM_ATTR timer_isr_callback(gptimer_handle_t timer,
     
     // Check if we have data
     if (s_isr_tail == s_isr_head) {
-        // Buffer empty - output rest point
-        dac_output_point(&REST_POINT);
+        // Buffer empty - hold galvo position, laser off
+        laser_point_t blanked = s_last_point;
+        blanked.r = 0;
+        blanked.g = 0;
+        blanked.b = 0;
+        blanked.flags |= POINT_FLAG_BLANK;
+        dac_output_point(&blanked);
         s_isr_underruns++;
         return false;
     }
@@ -125,6 +136,7 @@ static bool IRAM_ATTR timer_isr_callback(gptimer_handle_t timer,
     
     // Output point (uses direct SPI - ~6us)
     dac_output_point(point);
+    s_last_point = *point;
     
     // Advance tail
     s_isr_tail = (s_isr_tail + 1) % ISR_BUFFER_SIZE;

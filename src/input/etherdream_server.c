@@ -28,6 +28,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_timer.h"
+#include "esp_netif.h"
 #include "lwip/sockets.h"
 #include "lwip/netdb.h"
 #include <string.h>
@@ -175,6 +176,7 @@ static volatile int s_rate_queue_head = 0;
 static volatile int s_rate_queue_tail = 0;
 
 static int s_broadcast_socket = -1;
+static uint32_t s_broadcast_addr = INADDR_BROADCAST;
 static uint32_t s_last_broadcast_time = 0;
 
 #define RATE_METER_INTERVAL_MS  500
@@ -334,6 +336,29 @@ esp_err_t etherdream_server_start(void) {
         int broadcast = 1;
         setsockopt(s_broadcast_socket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
         
+        // Bind to the active network interface so broadcasts reach the right subnet
+        esp_netif_ip_info_t ip_info;
+        esp_netif_t* netif = NULL;
+        // Try WiFi AP first, then Ethernet
+        netif = esp_netif_get_handle_from_ifkey("WIFI_AP_DEF");
+        if (!netif) {
+            netif = esp_netif_get_handle_from_ifkey("ETH_DEF");
+        }
+        if (netif && esp_netif_get_ip_info(netif, &ip_info) == ESP_OK && ip_info.ip.addr != 0) {
+            struct sockaddr_in bind_addr = {
+                .sin_family = AF_INET,
+                .sin_port = htons(0),
+                .sin_addr.s_addr = ip_info.ip.addr,
+            };
+            bind(s_broadcast_socket, (struct sockaddr*)&bind_addr, sizeof(bind_addr));
+            s_broadcast_addr = (ip_info.ip.addr | ~ip_info.netmask.addr);
+            ESP_LOGI(TAG, "UDP broadcast bound to " IPSTR ", bcast " IPSTR,
+                     IP2STR(&ip_info.ip), IP2STR((esp_ip4_addr_t*)&s_broadcast_addr));
+        } else {
+            s_broadcast_addr = htonl(INADDR_BROADCAST);
+            ESP_LOGW(TAG, "No netif found, using global broadcast");
+        }
+
         // Set non-blocking
         flags = fcntl(s_broadcast_socket, F_GETFL, 0);
         fcntl(s_broadcast_socket, F_SETFL, flags | O_NONBLOCK);
@@ -512,7 +537,7 @@ static void send_broadcast(void) {
     struct sockaddr_in dest = {
         .sin_family = AF_INET,
         .sin_port = htons(ETHERDREAM_UDP_PORT),
-        .sin_addr.s_addr = htonl(INADDR_BROADCAST),
+        .sin_addr.s_addr = s_broadcast_addr,
     };
     
     sendto(s_broadcast_socket, &bcast, sizeof(bcast), 0,

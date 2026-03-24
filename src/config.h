@@ -36,6 +36,8 @@ extern "C" {
 #define PIN_ETH_CS          16
 #define PIN_ETH_INT         8
 
+#define PIN_STATUS_LED      7
+
 #define ETH_SPI_HOST        SPI2_HOST
 // W5500 SPI: 50 MHz for better throughput (chip supports up to 80 MHz)
 // Gain: +25% transfer speed vs 40 MHz
